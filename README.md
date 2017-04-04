@@ -1,9 +1,10 @@
 Blender addon to configure and render light fields with depth and disparity maps.
+
 Please don't hesitate to contact us for any kind of questions, feedback, wishes, or bug reports.
 
 # Installation
 
-For installation please copy the light_field_renderer folder to the blender/VERSION/scripts/addons folder of your local blender installation.
+For installation please copy the "light_field_renderer" folder to the blender/VERSION/scripts/addons folder of your local blender installation.
 
 Afterwards, you can activate the add-on at File -> User Preferences -> Add-ons -> Render
 
