@@ -4,7 +4,7 @@ Please don't hesitate to contact us for any kind of questions, feedback, wishes,
 
 # Installation
 
-For installation please copy the "light_field_renderer" folder to the blender/VERSION/scripts/addons folder of your local blender installation.
+For installation please clone the git repository into the blender/VERSION/scripts/addons/ folder of your local blender installation.
 
 Afterwards, you can activate the add-on at File -> User Preferences -> Add-ons -> Render
 
