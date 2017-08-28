@@ -100,8 +100,12 @@ class OBJECT_OT_save_lightfield(bpy.types.Operator):
         return {'FINISHED'}
 
     def get_offset(self, LF):
-        offset = LF.baseline_mm * LF.focal_length / LF.focus_dist / 1000. / LF.sensor_size * max(LF.x_res, LF.y_res)
+        if LF.focus_dist > 0:
+            offset = LF.baseline_mm * LF.focal_length / LF.focus_dist / 1000. / LF.sensor_size * max(LF.x_res, LF.y_res)
+        else:
+            offset = 0
         return offset
+
 
 
 class OBJECT_OT_load_lightfield(bpy.types.Operator):
