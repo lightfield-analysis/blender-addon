@@ -104,29 +104,71 @@ class OBJECT_OT_create_lightfield(bpy.types.Operator):
     bl_options = {'REGISTER'}
 
     def execute(self, context):
-        bpy.ops.scene.delete_lightfield('EXEC_DEFAULT')
+
+
+        LF = bpy.context.scene.LF
+
+        # Create lightfield container, but only if it doesn't exist yet.
+        # If it exists, just clear it.
+        # This is required as deleting the LF-object would also delete
+        # defined keyframes for camera animation.
+        #
+        # For this reason we also only restore the position of the LF-object
+        # from config file if it's non existent.
+        try:
+
+            lightfield = bpy.data.objects[LF.get_lightfield_name()]
+
+            # -> now we are going to clear the LF object
+
+            # save initially selected objects
+            selected_objects = bpy.context.selected_objects
+
+            # delesect everything
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
+
+            # delete frustum, cameras and container
+            for camera in LF.get_lightfield_cameras():
+                camera.select = True
+
+            LF.get_frustum().hide = False
+            LF.get_frustum().hide_select = False
+            LF.get_frustum().select = True
+
+            bpy.ops.object.delete()
+
+            # restore initial state
+            for object in selected_objects:
+                object.select = True
+
+        except KeyError:
+
+            bpy.ops.object.empty_add(type='PLAIN_AXES', view_align=False, location=(0, 0, 0), rotation=(0, 0, 0))
+            lightfield = bpy.context.object
+
+            lightfield.empty_draw_size = 0.4
+            lightfield.name = LF.get_lightfield_name()
+
+            lightfield.location = [LF.center_cam_x, LF.center_cam_y, LF.center_cam_z]
+            lightfield.rotation_euler = [LF.center_cam_rot_x, LF.center_cam_rot_y, LF.center_cam_rot_z]
+
 
         # initialize lightfield elements
         self.set_render_properties()
         cameras = self.create_cameras()
-        frustum = self.create_frustum()
 
-        # create lightfield container
-        LF = bpy.context.scene.LF
-        bpy.ops.object.empty_add(type='PLAIN_AXES', view_align=False, location=(0, 0, 0), rotation=(0, 0, 0))
-        bpy.context.object.empty_draw_size = 0.4
-        bpy.context.object.name = LF.get_lightfield_name()
+        frustum = self.create_frustum()
+        frustum.hide_select = True
 
         # add all cameras and frustum to container
         lightfield_objects = cameras + [frustum]
         for object in lightfield_objects:
-            object.select = True
+            object.parent = lightfield
 
-        bpy.ops.object.parent_set(type='OBJECT', xmirror=False, keep_transform=False)
-        bpy.context.object.location = [LF.center_cam_x, LF.center_cam_y, LF.center_cam_z]
-        bpy.context.object.rotation_euler = [LF.center_cam_rot_x, LF.center_cam_rot_y, LF.center_cam_rot_z]
+        # set the active object to LF container
+        bpy.context.scene.objects.active = lightfield
 
-        LF.get_frustum().hide_select = True
         return {'FINISHED'}
 
     def create_cameras(self):
@@ -293,9 +335,38 @@ class OBJECT_OT_render_lightfield(bpy.types.Operator):
     bl_options = {'REGISTER'}
 
     def execute(self, context):
+        LF = bpy.context.scene.LF
+
+        # legacy mode
+        if LF.sequence_start == LF.sequence_end:
+            bpy.context.scene.frame_current = LF.sequence_start
+            self.renderFrame()
+
+        # sequence mode
+        # when more then one frame should be rendered we render each frame to a different folder
+        else:
+            frame_list = range(LF.sequence_start, LF.sequence_end+1, LF.sequence_steps)
+            for i in frame_list:
+                bpy.context.scene.frame_current = i
+                tgt_dir = os.path.join(bpy.path.abspath(LF.tgt_dir),"sequence","{:06d}".format(i))
+                self.renderFrame(tgt_dir)
+
+
+        return {'FINISHED'}
+
+    def renderFrame(self, tgt_dir = None):
+        """
+        Renders the currently selected frame to tgt_dir folder
+        """
+
         scene_key = bpy.context.scene.name
         LF = bpy.context.scene.LF
-        tgt_dir = bpy.path.abspath(LF.tgt_dir)
+
+        tgt_root_dir = bpy.path.abspath(LF.tgt_dir)
+
+        if tgt_dir == None:
+            tgt_dir = tgt_root_dir
+
 
         bpy.context.scene.use_nodes = True
         bpy.data.scenes[scene_key].render.layers['RenderLayer'].use_pass_z = True
@@ -347,12 +418,12 @@ class OBJECT_OT_render_lightfield(bpy.types.Operator):
         bpy.context.scene.render.engine = current_render_engine
         bpy.context.scene.render.use_antialiasing = current_antialiasing
         bpy.data.scenes[bpy.context.scene.name].render.resolution_percentage = 100
-        bpy.data.scenes[scene_key].render.filepath = LF.tgt_dir
+        bpy.data.scenes[scene_key].render.filepath = tgt_root_dir
 
         print('Done!')
-        return {'FINISHED'}
 
     def render_input_views(self, cameras, scene_key, LF, tgt_dir):
+
 
         # create image output node
         image_out_node = bpy.data.scenes[scene_key].node_tree.nodes.new(type='CompositorNodeOutputFile')
@@ -366,7 +437,8 @@ class OBJECT_OT_render_lightfield(bpy.types.Operator):
         left = image_out_node.inputs['Image']
         bpy.data.scenes[scene_key].node_tree.links.new(right, left)
 
-        bpy.data.scenes[scene_key].render.filepath = tgt_dir
+        bpy.data.scenes[scene_key].render.filepath = os.path.join(bpy.path.abspath(LF.tgt_dir), "unused_blenderender_output")
+
         image_out_node.base_path = tgt_dir
 
         # render view per camera
@@ -479,7 +551,7 @@ class OBJECT_OT_render_lightfield(bpy.types.Operator):
             depth = np.array(pixels)[::4]
 
             # reshape high resolution depth map
-            depth = depth.reshape((LF.y_res * LF.depth_map_scale, LF.x_res * LF.depth_map_scale))
+            depth = depth.reshape((int(LF.y_res * LF.depth_map_scale), int(LF.x_res * LF.depth_map_scale)))
 
             # create depth map with original (low) resolution
             depth_small = median_downsampling(depth, LF.depth_map_scale, LF.depth_map_scale)
@@ -584,15 +656,15 @@ def median_downsampling(img, tile_height, tile_width):
     n_tiles = n_tiles_horiz * n_tiles_vert
 
     # split vertically into tiles with height=tile_height, width=img_width
-    tiles_vert = np.asarray(np.split(img, n_tiles_vert, 0))  # n_tiles_vert x tile_height x w
-    tiles_vert = tiles_vert.transpose([1, 0, 2]).reshape(tile_height, n_tiles_vert * w)
+    tiles_vert = np.asarray(np.split(img, int(n_tiles_vert), 0))  # n_tiles_vert x tile_height x w
+    tiles_vert = tiles_vert.transpose([1, 0, 2]).reshape(int(tile_height), int(n_tiles_vert * w))
 
     # split horizontally into tiles with height=tile_height, width=tile_width
     tiles = np.asarray(np.split(tiles_vert, n_tiles, 1))
-    tiles = tiles.reshape(n_tiles, tile_width * tile_height)  # n_tiles x px_per_tile
+    tiles = tiles.reshape(int(n_tiles), int(tile_width * tile_height))  # n_tiles x px_per_tile
 
     # compute median per tile (without averaging for even N)
-    tiles = np.sort(tiles, axis=1)[:, tile_width*tile_height/2]
-    small_img = tiles.reshape(n_tiles_vert, n_tiles_horiz)
+    tiles = np.sort(tiles, axis=1)[:, int(tile_width*tile_height/2)]
+    small_img = tiles.reshape(int(n_tiles_vert), int(n_tiles_horiz))
 
     return small_img
