@@ -165,9 +165,11 @@ class OBJECT_OT_create_lightfield(bpy.types.Operator):
         lightfield_objects = cameras + [frustum]
         for object in lightfield_objects:
             object.parent = lightfield
+            object.select = False
 
         # set the active object to LF container
         bpy.context.scene.objects.active = lightfield
+        lightfield.select = True
 
         return {'FINISHED'}
 
