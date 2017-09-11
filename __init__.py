@@ -150,6 +150,24 @@ class LFPropertyGroup(bpy.types.PropertyGroup):
         default=False,
         description='Whether to save object id maps for all views or only for center view.'
     )
+    sequence_start = IntProperty(
+        name='start frame',
+        default=0,
+        description='The frame in the timeline where to start recording the LF movie'
+    )
+    sequence_end = IntProperty(
+        name='end frame',
+        default=0,
+        description='The frame in the timeline where to stop recording the LF movie'
+    )
+    sequence_steps = IntProperty(
+        name='frame steps',
+        default=1,
+        min=1,
+        max=20,
+        description='Step length from one to the next frame, i.e. to downsample the movie'
+    )
+
 
     # file IO
     tgt_dir = StringProperty(
