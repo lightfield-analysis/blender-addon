@@ -4,14 +4,16 @@ Please don't hesitate to contact us for any kind of questions, feedback, wishes,
 
 # Installation
 
-For installation please clone the git repository into the blender/VERSION/scripts/addons/ folder of your local blender installation.
-
-Afterwards, you can activate the add-on at File -> User Preferences -> Add-ons -> Render
-
+Please clone the git repository into the blender/VERSION/scripts/addons/ folder of your local blender installation.
+Afterwards, you can activate the add-on at File -> User Preferences -> Add-ons -> Render.
 Once activated, the add-on can be found at the left menu of the '3D View' window at 'Misc'.
 
 
 # Usage
+
+
+<img src="http://lightfield-analysis.net/benchmark/github_readme/blender_screenshot.png" width=300 align="right"/>
+
 You can generate a new camera grid using the 'Add Camera Grid' button. Any changes to the parameters of the camera grid will be updated instantaneously. For better visualization, we added a frustum that shows the volume that is covered by the light field for a given disparity range. As described in the additional material of our paper, the camera grid is focused on a certain plane. 
 
 Please note, the cameras are shifted, not rotated, so the optical axes are still parallel! If you want to generate a camera grid which is focused at infinity, i.e. has non-shifted identical cameras, you can set the focus distance to 0.
