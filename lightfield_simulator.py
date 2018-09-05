@@ -534,8 +534,12 @@ class OBJECT_OT_render_lightfield(bpy.types.Operator):
         max_res = max(LF.x_res, LF.y_res)
         factor = LF.baseline_x_m * LF.focal_length * LF.focus_dist * max_res
 
-        # prepare depth output node
-        right = bpy.data.scenes[scene_key].node_tree.nodes['Render Layers'].outputs['Z']
+        # prepare depth output node. blender changed their naming convection for render layers in 2.79... so Z became Depth and everthing else got complicated ;)
+        if 'Z' in bpy.data.scenes[scene_key].node_tree.nodes['Render Layers'].outputs:
+            right = bpy.data.scenes[scene_key].node_tree.nodes['Render Layers'].outputs['Z']
+        else:
+            right = bpy.data.scenes[scene_key].node_tree.nodes['Render Layers'].outputs['Depth']
+            
         depth_view_node = bpy.data.scenes[scene_key].node_tree.nodes.new('CompositorNodeViewer')
         depth_view_node.use_alpha = False
         left = depth_view_node.inputs[0]
